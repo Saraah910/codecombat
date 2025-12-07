@@ -1,14 +1,42 @@
-version: '3'
 services:
-  proxy:
-    build:
-      context: .
-      dockerfile: ./development/docker/Dockerfile
-    command: bash -c "npm install && npm run build && npm run proxy"
-    volumes:
-      - .:/coco
-      - /coco/node_modules
+  mongo:
+    image: mongo:7.0
+    container_name: codecombat-mongo
+    restart: always
     environment:
-      DEV_CONTAINER: 1
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: rootpassword
     ports:
-      - 7777:3000
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: echo "db.adminCommand('ping')" | mongo -u root -p rootpassword --authenticationDatabase admin
+      interval: 5s
+      retries: 5
+
+  mongo-express:
+    image: mongo-express
+    container_name: mongo-express-ui
+    restart: always
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: root
+      ME_CONFIG_MONGODB_ADMINPASSWORD: rootpassword
+      ME_CONFIG_MONGODB_SERVER: mongo
+
+  codecombat:
+    image: docker.io/170102/codecombat:latest
+    container_name: codecombat-app
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      MONGO_URL: "mongodb://root:rootpassword@mongo:27017/codecombat?authSource=admin"
+    depends_on:
+      - mongo
+
+volumes:
+  mongo_data:
+
